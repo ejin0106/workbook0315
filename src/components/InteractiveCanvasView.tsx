@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { PenTool, Hand, CheckCircle, ArrowLeft, Loader2, Sparkles, Printer } from 'lucide-react';
+import { PenTool, Hand, CheckCircle, ArrowLeft, Loader2, Sparkles, Printer, Eraser, Trash2 } from 'lucide-react';
 import { subscribeToWorkbooks, updatePage, addGeneratedPageToWorkbook } from '../store';
 import { PageStatus, WorkbookPage, Workbook } from '../types';
 import { OCRService, LLMService } from '../services/MockServices';
@@ -13,7 +13,8 @@ export const InteractiveCanvasView: React.FC = () => {
   const { workbookId, pageId } = useParams<{ workbookId: string; pageId: string }>();
   const navigate = useNavigate();
   const [page, setPage] = useState<WorkbookPage | null>(null);
-  const [isDrawingMode, setIsDrawingMode] = useState(true);
+  const [activeTool, setActiveTool] = useState<'hand' | 'pen' | 'eraser'>('pen');
+  const [eraserWidth, setEraserWidth] = useState(20);
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [isGrading, setIsGrading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -88,6 +89,12 @@ export const InteractiveCanvasView: React.FC = () => {
     navigate(`/workbook/${workbookId}/page/${newPage.id}`);
   };
 
+  const handleClear = () => {
+    if (confirm('Are you sure you want to clear all drawings?')) {
+      handleStrokesChange([]);
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -117,27 +124,61 @@ export const InteractiveCanvasView: React.FC = () => {
             <Printer className="w-5 h-5" />
           </button>
 
-          {/* Tool Picker (Pencil vs Hand) */}
-          <div className="flex bg-gray-100 rounded-lg p-1">
+          {/* Tool Picker (Hand vs Pen vs Eraser) */}
+          <div className="flex bg-gray-100 rounded-lg p-1 items-center">
             <button
-              onClick={() => setIsDrawingMode(false)}
+              onClick={() => setActiveTool('hand')}
               className={`p-2 rounded-md transition-colors ${
-                !isDrawingMode ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                activeTool === 'hand' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-900'
               }`}
               title="Scroll/Pan (Hand)"
             >
               <Hand className="w-5 h-5" />
             </button>
             <button
-              onClick={() => setIsDrawingMode(true)}
+              onClick={() => setActiveTool('pen')}
               className={`p-2 rounded-md transition-colors ${
-                isDrawingMode ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                activeTool === 'pen' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-900'
               }`}
               title="Draw (Pencil)"
             >
               <PenTool className="w-5 h-5" />
             </button>
+            <button
+              onClick={() => setActiveTool('eraser')}
+              className={`p-2 rounded-md transition-colors ${
+                activeTool === 'eraser' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-900'
+              }`}
+              title="Eraser"
+            >
+              <Eraser className="w-5 h-5" />
+            </button>
+            
+            {/* Eraser Size Slider */}
+            {activeTool === 'eraser' && (
+              <div className="flex items-center gap-2 ml-2 px-2 border-l border-gray-300">
+                <span className="text-xs text-gray-500 font-medium">Size</span>
+                <input
+                  type="range"
+                  min="5"
+                  max="50"
+                  value={eraserWidth}
+                  onChange={(e) => setEraserWidth(Number(e.target.value))}
+                  className="w-20 accent-indigo-600"
+                  title={`Eraser Size: ${eraserWidth}px`}
+                />
+              </div>
+            )}
           </div>
+
+          {/* Clear Button */}
+          <button
+            onClick={handleClear}
+            className="p-2 text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors"
+            title="Clear All Drawings"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
 
           {/* Grade Button */}
           {page.status === PageStatus.Parsed && (
@@ -182,7 +223,7 @@ export const InteractiveCanvasView: React.FC = () => {
             className="relative w-full max-w-[800px] h-full bg-white shadow-xl rounded-lg overflow-hidden flex flex-col print:shadow-none print:max-w-none print:h-auto print:overflow-visible"
           >
             {/* Dual Layer Container */}
-            <div className={`relative flex-1 ${!isDrawingMode ? 'overflow-y-auto' : 'overflow-hidden'} print:overflow-visible`}>
+            <div className={`relative flex-1 ${activeTool === 'hand' ? 'overflow-y-auto' : 'overflow-hidden'} print:overflow-visible`}>
               <div className="relative min-h-full">
                 {/* Base Layer: Markdown + MathJax/KaTeX */}
                 <div className="p-8 prose prose-lg max-w-none print:p-4">
@@ -204,7 +245,8 @@ export const InteractiveCanvasView: React.FC = () => {
                 <DrawingCanvas
                   strokes={strokes}
                   onStrokesChange={handleStrokesChange}
-                  isDrawingMode={isDrawingMode}
+                  activeTool={activeTool}
+                  eraserWidth={eraserWidth}
                 />
               </div>
             </div>

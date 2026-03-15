@@ -91,6 +91,17 @@ export const deletePageFromWorkbook = async (workbookId: string, pageId: string)
   await deleteDoc(doc(db, `workbooks/${workbookId}/pages`, pageId));
 };
 
+export const deleteWorkbook = async (workbookId: string): Promise<void> => {
+  // Delete all pages in the subcollection first
+  const pagesQuery = query(collection(db, `workbooks/${workbookId}/pages`));
+  const pagesSnapshot = await getDocs(pagesQuery);
+  const deletePromises = pagesSnapshot.docs.map(d => deleteDoc(d.ref));
+  await Promise.all(deletePromises);
+  
+  // Delete the workbook document
+  await deleteDoc(doc(db, 'workbooks', workbookId));
+};
+
 export const addGeneratedPageToWorkbook = async (workbookId: string, text: string): Promise<WorkbookPage> => {
   const newPage: WorkbookPage = {
     id: uuidv4(),

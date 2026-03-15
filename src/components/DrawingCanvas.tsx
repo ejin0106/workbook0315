@@ -9,18 +9,21 @@ export interface Stroke {
   points: Point[];
   color: string;
   width: number;
+  isEraser?: boolean;
 }
 
 interface DrawingCanvasProps {
   strokes: Stroke[];
   onStrokesChange: (strokes: Stroke[]) => void;
-  isDrawingMode: boolean;
+  activeTool: 'hand' | 'pen' | 'eraser';
+  eraserWidth?: number;
 }
 
 export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   strokes,
   onStrokesChange,
-  isDrawingMode,
+  activeTool,
+  eraserWidth = 20,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -66,8 +69,10 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
   const drawStroke = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
     if (stroke.points.length === 0) return;
+    
+    ctx.globalCompositeOperation = stroke.isEraser ? 'destination-out' : 'source-over';
     ctx.beginPath();
-    ctx.strokeStyle = stroke.color;
+    ctx.strokeStyle = stroke.isEraser ? 'rgba(0,0,0,1)' : stroke.color;
     ctx.lineWidth = stroke.width;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -77,10 +82,11 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
     }
     ctx.stroke();
+    ctx.globalCompositeOperation = 'source-over';
   };
 
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDrawingMode) return;
+    if (activeTool === 'hand') return;
     e.preventDefault();
     const point = getPoint(e);
     if (!point) return;
@@ -89,12 +95,13 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     setCurrentStroke({
       points: [point],
       color: '#000000', // Default black ink
-      width: 3,
+      width: activeTool === 'eraser' ? eraserWidth : 3,
+      isEraser: activeTool === 'eraser',
     });
   };
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDrawing || !currentStroke || !isDrawingMode) return;
+    if (!isDrawing || !currentStroke || activeTool === 'hand') return;
     e.preventDefault();
     const point = getPoint(e);
     if (!point) return;
@@ -141,7 +148,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       width={canvasSize.width}
       height={canvasSize.height}
       className={`absolute top-0 left-0 w-full h-full ${
-        isDrawingMode ? 'pointer-events-auto cursor-crosshair' : 'pointer-events-none'
+        activeTool !== 'hand' ? 'pointer-events-auto cursor-crosshair' : 'pointer-events-none'
       }`}
       onMouseDown={startDrawing}
       onMouseMove={draw}
