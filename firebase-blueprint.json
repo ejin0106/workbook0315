@@ -1,0 +1,60 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the application",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Workbook": {
+      "title": "Workbook",
+      "description": "A collection of practice pages",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "subject": { "type": "string", "enum": ["Math", "English", "Chinese"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "subject", "createdAt", "updatedAt"]
+    },
+    "WorkbookPage": {
+      "title": "WorkbookPage",
+      "description": "A single page in a workbook",
+      "type": "object",
+      "properties": {
+        "workbookId": { "type": "string" },
+        "title": { "type": "string" },
+        "originalImageUri": { "type": "string" },
+        "parsedMarkdown": { "type": "string" },
+        "drawingData": { "type": "string" },
+        "status": { "type": "string", "enum": ["Scanning", "Parsed", "Graded"] },
+        "gradingFeedback": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "isGenerated": { "type": "boolean" }
+      },
+      "required": ["workbookId", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles"
+    },
+    "workbooks/{workbookId}": {
+      "schema": { "$ref": "#/entities/Workbook" },
+      "description": "Workbooks created by users"
+    },
+    "workbooks/{workbookId}/pages/{pageId}": {
+      "schema": { "$ref": "#/entities/WorkbookPage" },
+      "description": "Pages within a workbook"
+    }
+  }
+}
